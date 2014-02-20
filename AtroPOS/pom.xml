@@ -113,6 +113,23 @@
 			<version>2.0.0</version>
 		</dependency>
 		
+		<!-- Jackson for json -->
+		<dependency>
+			<groupId>org.codehaus.jackson</groupId>
+			<artifactId>jackson-mapper-asl</artifactId>
+			<version>1.8.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.codehaus.jackson</groupId>
+			<artifactId>jackson-core-lgpl</artifactId>
+			<version>1.8.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.codehaus.jackson</groupId>
+			<artifactId>jackson-mapper-lgpl</artifactId>
+			<version>1.8.0</version>
+		</dependency>
+		
 		<!-- tomcat doesn't provide these -->
 		<dependency>
 			<groupId>javax.servlet</groupId>
