@@ -10,10 +10,13 @@
 	<head>
 		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 		<link rel="stylesheet" type="text/css" href='<c:out value="${pageContext.request.contextPath}"/>/css/atropos.css' />
-		<link rel="stylesheet" type="text/css" href="<c:out value="${pageContext.request.contextPath}"/>/css/smoothness/jquery-ui-1.10.4.custom.css">
+		<link rel="stylesheet" type="text/css" href="<c:out value="${pageContext.request.contextPath}"/>/css/custom-theme/jquery-ui-1.10.4.custom.min.css">
+		<link rel="stylesheet" type="text/css" href='<c:out value="${pageContext.request.contextPath}"/>/css/ui.jqgrid.css' />
 		<script src="<c:out value="${pageContext.request.contextPath}"/>/js/jquery-1.10.2.js"></script>
 		<script src="<c:out value="${pageContext.request.contextPath}"/>/js/jquery-ui-1.10.4.custom.js"></script>
 		<script src='<c:out value="${pageContext.request.contextPath}"/>/js/util.js'></script>
+		<script src='<c:out value="${pageContext.request.contextPath}"/>/js/i18n/grid.locale-en.js'></script>
+		<script src="<c:out value="${pageContext.request.contextPath}"/>/js/jquery.jqGrid.min.js"></script>
 		<script type="text/javascript">
 			
 			var txtProductID;
@@ -30,9 +33,16 @@
 			var spnSubTotal;
 			var spnTotal;
 			
+			var btnAdd;
 			var btnPay;
 			var btnPrintNFinish;
 			var btnCancelPayment;
+			var btnViewCust;
+			
+			var btnSearch;
+			var btnVoid;
+			var btnPay;
+			var btnCancelTrans;
 			
 			var dlgPaymentForm;
 			
@@ -51,7 +61,31 @@
 				handleEvents();			
 				loadQuickItems();
 				
+				btnAdd.prop('disabled', true);
+				
+				txtProductID.focus();
+				
 				chkWalkin.trigger("click");
+				
+				$("#pos-list").jqGrid({ 
+					datatype: "local", 
+					height: 285, 
+					width: "100%",
+					scrollOffset: 0,
+					colNames:['Product ID','Name', 'Price', 'Quantity','Subtotal'], 
+					colModel:[ {name:'id',index:'id', width:110}, 
+					           {name:'name',index:'name', width:120}, 
+					           {name:'price',index:'price', width:120, align:"right",sorttype:"float"}, 
+					           {name:'qty',index:'qty', width:103, align:"right",sorttype:"float"}, 
+					           {name:'subtotal',index:'subtotal', width:120, align:"right",sorttype:"float"}
+					 ],
+					 multiselect: false,
+					 afterInsertRow: function(rowid, rowdata, rowelem){
+						 
+					 }
+				});
+				
+				$("#pos-list").jqGrid('bindKeys');
 			});
 			
 			function cacheSelectors(){
@@ -68,9 +102,16 @@
 				spnSubTotal = $("#spnSubTotal");
 				spnTotal = $("#spnTotal");
 				
+				btnAdd = $("#btnAdd");
 				btnPay = $("#btnPay");
 				btnPrintNFinish = $("#btnPrintNFinish");
 				btnCancelPayment = $("#btnCancelPayment");
+				btnViewCust = $("#btnViewCust");
+				
+				btnSearch = $("#btnSearch");
+				btnVoid = $("#btnVoid");
+				btnPay = $("#btnPay");
+				btnCancelTrans = $("#btnCancelTrans");
 				
 				dlgPaymentForm = $("#dlgPaymentForm");
 				
@@ -94,14 +135,20 @@
 					 }
 				});
 				 
-				 txtTotalPayable.button();
-				 txtCashPayment.button().focus(function () { // select text on focus
-				        $(this).select();
-				 });;
-				 txtChange.button();
+				txtTotalPayable.button();
+				txtCashPayment.button().focus(function () { // select text on focus
+				       $(this).select();
+				});;
+				txtChange.button();
 				 
-				 btnPrintNFinish.button();
-				 btnCancelPayment.button();
+				btnSearch.button();
+				btnVoid.button();
+				btnPay.button();
+				btnCancelTrans.button();
+				btnViewCust.button();
+
+				btnPrintNFinish.button();
+				btnCancelPayment.button();
 			}
 			
 			function handleEvents(){
@@ -123,6 +170,10 @@
 					txtCashPayment.focus();
 				});
 				
+				btnCancelPayment.click(function() {
+					dlgPaymentForm.dialog("close");
+				});
+				
 				txtCashPayment.keyup(function(){
 					var totalPayable = parseFloat(txtTotalPayable.val());
 					var payment = $.isNumeric(txtCashPayment.val()) ? parseFloat(txtCashPayment.val()) : 0;
@@ -134,12 +185,39 @@
 					}
 					
 					txtChange.val(changeDisplay);
-					
-					console.log("totalPayable : " + totalPayable);
-					console.log("payment : " + payment);
-					console.log("change : " + change);
-					console.log("changeDisplay : " + changeDisplay);
 				});
+				
+				txtProductID.keyup(function(evt){
+					keypressForAddingProduct(evt);
+				});
+				
+				txtQty.keyup(function(evt){
+					keypressForAddingProduct(evt);
+				});
+			}
+			
+			function keypressForAddingProduct(evt){
+				if(itemCanBeAdded()){
+					if (evt.keyCode == 13){
+						addItem();
+						btnAdd.prop('disabled', true);
+					}else{
+						btnAdd.prop('disabled', false);
+					}
+				}else{
+					btnAdd.prop('disabled', true);
+				}
+			}
+			
+			function itemCanBeAdded(){
+				if(txtProductID.val().trim() === '' 
+						|| txtQty.val().trim() === '' 
+						|| txtPrice.val().trim() === ''
+						|| !$.isNumeric(txtQty.val())){
+					return false;
+				}
+				
+				return true;
 			}
 			
 			function loadQuickItems(){
@@ -165,7 +243,7 @@
 				var entry = quickItemEntry.clone();
 				entry.attr("id", id);
 				entry.attr("onclick","quickItemOnclick('" + id + "', '" + name + "','" + price + "')");
-				entry.val(name + "&#x00A;" + price);
+				entry.html(name + "<br/>" + price);
 				entry.button();
 				
 				return entry;
@@ -181,14 +259,15 @@
 				txtPrice.val(price);
 				txtQty.val(1);
 				txtQty.select();
+				txtQty.trigger("keyup");
 			}
 			
-			function addItemToOrderList(){
-				var id = txtProductID.val();
-				var name = txtProductName.val();
-				var price = parseFloat(txtPrice.val());
-				var qty = parseInt(txtQty.val(), 10);
-				var orderItemTotal = qty * price;
+			function addItem(){
+				var prodId = txtProductID.val();
+				var prodName = txtProductName.val();
+				var prodPrice = parseFloat(txtPrice.val());
+				var orderQty = parseInt(txtQty.val(), 10);
+				var orderItemTotal = orderQty * prodPrice;
 				
 				var discount = 0;
 				
@@ -196,13 +275,17 @@
 				
 				var grandTotal = subTotal - discount;
 				
-				$("#pos-order-items-table>tbody>tr:last").after("<tr>" +
+				/* $("#pos-order-items-table>tbody>tr:last").after("<tr onclick='rowSelected(this)'>" +
 						"<td>" + id + "</td>" +
 						"<td>" + name + "</td>" +
 						"<td class='text-align-right'>" + price.formatMoney(2, ",", ".") + "</td>" +
 						"<td class='text-align-right'>" + qty + "</td>" +
 						"<td class='text-align-right'>" + orderItemTotal + "</td>" +
-						"</tr>");
+						"</tr>"); */
+				var rowData = {id:prodId, name:prodName, price:prodPrice, qty:orderQty, subtotal:orderItemTotal};
+				
+				//the second parameter is the id of the tr to be inserted
+				$("#pos-list").jqGrid('addRowData', prodId, rowData);
 				
 				spnDiscount.html(discount.formatMoney(2, ",", "."));
 				spnSubTotal.html(subTotal.formatMoney(2, ",", "."));
@@ -213,6 +296,11 @@
 				txtPrice.val("");
 				txtQty.val("");
 				txtProductID.select();
+			}
+			
+			//void items
+			function voidItems(){
+				$('#pos-list').jqGrid('delRowData', $('#pos-list').jqGrid ('getGridParam', 'selrow'));
 			}
 		</script>
 	</head>
@@ -225,27 +313,28 @@
 				<div id="pos-body-left">
 					<div id="pos-product-search">
 						<span class="pos-label margin-left-5">Product</span>
-						<input type="text" id="txtProductID" class="input-field width-70">
+						<input type="text" id="txtProductID" class="input-field width-70" tabindex="1">
 						<input type="text" id="txtProductName" class="input-field width-110" readonly>
 						<span class="pos-label margin-left-5">Qty</span>
-						<input type="text" id="txtQty" class="input-field width-40">
+						<input type="text" id="txtQty" class="input-field width-40" tabindex="2">
 						<span class="pos-label margin-left-5">Price</span>
 						<input type="text" id="txtPrice" class="input-field width-60" readonly>
-						<input type="button" class="button-field margin-left-5" value="Add (F2)" onclick="addItemToOrderList()">
+						<input type="button" id="btnAdd" class="button-field margin-left-5" tabindex="3" value="Add (F2)" onclick="addItem()">
 						<!-- <input type="button" class="button-field margin-left-5" value="0-(F3)"> -->
 					</div>
 					<div id="pos-options">
-						<input type="button" value="Search (F3)" class="float-left">
-						<input type="button" value="Void (F4)" class="float-left">
-						<input type="button" value="Pay (F5)" class="float-left" id="btnPay">
-						<input type="button" value="Cancel Trans (F9)" class="float-left">
+						<input type="button" value="Search (F3)" id="btnSearch" class="f-operation-button">
+						<input type="button" value="Void (F4)" id="btnVoid" class="f-operation-button" onclick="voidItems()">
+						<input type="button" value="Pay (F5)" id="btnPay" class="f-operation-button">
+						<input type="button" value="Cancel Trans (F9)" id="btnCancelTrans" class="f-operation-button">
 					</div>
 					<div id="pos-ordered-items">
-						<table id="pos-order-items-table" border="1" cellSpacing="0" cellPadding="0" width="100%">
+						<!-- <table id="pos-order-items-table" border="1" cellSpacing="0" cellPadding="0" width="100%">
 							<tbody>
 							<tr></tr>
 							</tbody>
-						</table>
+						</table> -->
+						<table id="pos-list"></table>
 					</div>
 					<div id="pos-total">
 						<div id="pos-customer">
@@ -254,7 +343,7 @@
 							</div>
 							<div id="pos-customer-body">
 								<p>ID : <input id="txtCustomerID" type="text" class="input-field width-110">&nbsp;<input id="chkWalkin" type="checkbox"> Walk-in</p>
-								<p class="margin-top-5">Disc % : <input id="txtDiscount" type="text" class="input-field width-70"> &nbsp; <input type="button" value="View Cust Info"></p>
+								<p class="margin-top-5">Disc % : <input id="txtDiscount" type="text" class="input-field width-70"> &nbsp; <input type="button" value="View Cust Info" id="btnViewCust" class="f-operation-button font-size-12"></p>
 							</div>
 						</div>
 						<div id="pos-total-summary">
@@ -279,8 +368,7 @@
 	
 	<!-- Item div in the quick items area -->
 	<div class="hidden">
-		<!-- <div id="quick-item-entry" class="quick-item float-left margin-right-10 margin-bottom-10">1</div> -->
-		<input type="button" id="quick-item-entry" class="quick-item float-left margin-right-10 margin-bottom-10">
+		<button id="quick-item-entry" class="quick-item float-left margin-right-10 margin-bottom-10"></button>
 	</div>
 	
 	<!-- Payment Form -->
@@ -293,6 +381,7 @@
 			<p class="payment-form-input-label margin-left-10">Change</p>
 			<p><input type="text" id="txtChange" class="payment-form-input margin-left-10 margin-bottom-20" readonly></p>
 		</div>
+		
 		<div id="pos-payment-form-right">
 			<p><input type="button" value="Print &&#x00A;Finish&#x00A;(F6)" id="btnPrintNFinish" class="payment-form-button">&nbsp;<input type="button" value="Cancel&#x00A;(F9)" id="btnCancelPayment" class="payment-form-button"></p>
 		</div>

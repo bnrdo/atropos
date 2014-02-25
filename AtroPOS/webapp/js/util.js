@@ -11,3 +11,4 @@ Number.prototype.formatMoney = function(decPlaces, thouSeparator, decSeparator) 
 			+ (decPlaces ? decSeparator
 					+ Math.abs(n - i).toFixed(decPlaces).slice(2) : "");
 };
+
